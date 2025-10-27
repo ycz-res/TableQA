@@ -1,0 +1,57 @@
+# TableQA训练配置 - 支持SFT冷启动和GPRO训练
+
+# 模型配置
+model:
+  name: "./models/pretrained/Qwen/Qwen2.5-1.5B-Instruct"
+  max_length: 1024
+  max_new_tokens: 512
+  temperature: 0.7
+  top_p: 0.9
+  do_sample: true
+
+# LoRA配置
+lora:
+  r: 16
+  lora_alpha: 32
+  target_modules: ["q_proj", "v_proj", "k_proj", "o_proj"]
+  lora_dropout: 0.1
+  bias: "none"
+
+# 数据配置
+data:
+  dataset_path: "./datasets/tablebench"
+  train_samples: 200
+  eval_samples: 50
+
+# SFT冷启动训练配置
+training:
+  output_dir: "./models/finetuned"
+  epochs: 1  # SFT只训练一个epoch
+  batch_size: 2
+  warmup_steps: 10
+  logging_steps: 5
+  eval_steps: 10
+  save_steps: 20
+  learning_rate: 2e-5
+  weight_decay: 0.01
+  gradient_accumulation_steps: 2
+
+# GPRO训练配置
+gpro:
+  epochs: 3
+  batch_size: 4
+  learning_rate: 1e-5
+  weight_decay: 0.01
+  logging_steps: 10
+  # 奖励权重配置
+  format_weight: 0.1  # format分数权重
+  em_weight: 0.9      # EM分数权重
+
+# 评估配置
+evaluation:
+  results_file: "./results/evaluation_results.json"
+  # 答案对比配置
+  answer_comparison:
+    normalize_answers: true
+    case_sensitive: false
+    remove_punctuation: true
