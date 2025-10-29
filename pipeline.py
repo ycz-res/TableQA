@@ -903,10 +903,21 @@ class TableQAPipeline:
         successful_results = [r for r in all_results if r['status'] == 'success']
         
         if not successful_results:
-            return "无法完成问题解答，所有子任务都失败了。"
+            return "<answer>\n无法完成问题解答，所有子任务都失败了。\n</answer>"
         
         if len(successful_results) == 1:
-            return successful_results[0]['result']
+            result = successful_results[0]['result']
+            # 确保格式正确
+            if not result.startswith('<answer>'):
+                import re
+                # 尝试提取答案内容
+                numbers = re.findall(r'\d+\.?\d*%?', result)
+                if numbers:
+                    answer_content = numbers[-1]
+                else:
+                    answer_content = result.strip()[:100]
+                result = f"<answer>\n{answer_content}\n</answer>"
+            return result
         
         # 多任务汇总 - 让Reasoning Agent进行最终汇总
         summary_prompt = f"""
@@ -935,7 +946,26 @@ class TableQAPipeline:
             # 移除输入部分，只保留生成的部分
             final_answer = final_answer[len(summary_prompt):].strip()
             
-            return final_answer if final_answer else "基于子任务结果，无法确定最终答案。"
+            # 确保输出格式正确 - 如果没有<answer>标签，添加它们
+            if not final_answer.startswith('<answer>'):
+                import re
+                # 尝试提取数字、百分比等答案
+                numbers = re.findall(r'\d+\.?\d*%?', final_answer)
+                if numbers:
+                    # 如果有数字，使用最后一个数字作为答案
+                    answer_content = numbers[-1]
+                else:
+                    # 否则尝试提取文本内容
+                    answer_content = final_answer.strip()
+                    # 如果太长，尝试提取关键信息
+                    if len(answer_content) > 100:
+                        # 提取第一句话或前100个字符
+                        sentences = answer_content.split('.')
+                        answer_content = sentences[0] if sentences else answer_content[:100]
+                
+                final_answer = f"<answer>\n{answer_content}\n</answer>"
+            
+            return final_answer if final_answer else "<answer>\n基于子任务结果，无法确定最终答案。\n</answer>"
             
         except Exception as e:
             print(f"⚠️ 最终汇总失败: {e}")
@@ -943,6 +973,15 @@ class TableQAPipeline:
             summary = "基于以下子任务的结果:\n\n"
             for i, result in enumerate(successful_results, 1):
                 summary += f"{i}. {result['result']}\n"
+            
+            # 确保格式正确
+            if not summary.startswith('<answer>'):
+                import re
+                # 尝试提取答案内容
+                numbers = re.findall(r'\d+\.?\d*%?', summary)
+                answer_content = numbers[-1] if numbers else summary.strip()[:100]
+                summary = f"<answer>\n{answer_content}\n</answer>"
+            
             return summary
     
     def _aggregate_results(self, subtask_results: List[Dict], split_result: Dict) -> str:

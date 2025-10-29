@@ -1,5 +1,5 @@
 # 数据集文件
-datasets/
+data/tablebench/
 models/
 logs/
 results/
@@ -26,7 +26,11 @@ venv/
 .DS_Store
 Thumbs.db
 
-# 测试输出
-test_output.log
+# 评估结果文件
+*_results.json
 evaluation_results.json
 final_accuracy_results.json
+
+# 训练checkpoint
+models/*/checkpoint-*/
+models/*/runs/

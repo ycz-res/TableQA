@@ -15,9 +15,79 @@ import re
 
 
 def load_config(config_path: str = "config.yaml") -> Dict[str, Any]:
-    """加载配置文件"""
-    with open(config_path, 'r', encoding='utf-8') as f:
-        return yaml.safe_load(f)
+    """
+    Load configuration file with defaults
+    
+    Args:
+        config_path: Config file path
+        
+    Returns:
+        Configuration dictionary with all parameters
+    """
+    from pathlib import Path
+    config_file = Path(config_path)
+    if not config_file.exists():
+        raise FileNotFoundError(f"Config file not found: {config_file}")
+    
+    with open(config_file, 'r', encoding='utf-8') as f:
+        user_config = yaml.safe_load(f) or {}
+    
+    # Build full config with defaults
+    config = {
+        "model": user_config.get("model", "Qwen/Qwen2.5-1.5B-Instruct"),
+        "dataset": user_config.get("dataset", "tablebench"),
+        "epochs": int(user_config.get("epochs", 3)),
+        "batch_size": int(user_config.get("batch_size", 2)),
+        "learning_rate": float(user_config.get("learning_rate", 2e-5)),
+        "train_samples": user_config.get("train_samples"),
+        "eval_samples": user_config.get("eval_samples"),
+    }
+    
+    # Compute derived paths
+    model = config["model"]
+    dataset = config["dataset"]
+    
+    if "/" in model and not model.startswith("."):
+        config["model_path"] = f"./models/pretrained/{model}"
+    else:
+        config["model_path"] = model
+    
+    config["dataset_path"] = f"./data/{dataset}" if not dataset.startswith(".") else dataset
+    config["output_dir"] = "./models/finetuned"
+    
+    # LoRA defaults
+    config["lora"] = {
+        "r": 16, "lora_alpha": 32,
+        "target_modules": ["q_proj", "v_proj", "k_proj", "o_proj"],
+        "lora_dropout": 0.1, "bias": "none"
+    }
+    
+    # Generation defaults
+    config["generation"] = {
+        "max_length": 1024, "max_new_tokens": 512,
+        "temperature": 0.7, "top_p": 0.9, "do_sample": True
+    }
+    
+    # Training details
+    config["training"] = {
+        "warmup_steps": 20, "logging_steps": 5, "eval_steps": 10,
+        "save_steps": 20, "weight_decay": 0.01, "gradient_accumulation_steps": 2
+    }
+    
+    # GPRO
+    config["gpro"] = {
+        "epochs": 3, "batch_size": 4, "learning_rate": 1e-5,
+        "weight_decay": 0.01, "logging_steps": 10,
+        "format_weight": 0.1, "em_weight": 0.9
+    }
+    
+    # Evaluation
+    config["evaluation"] = {
+        "results_file": "./results/evaluation_results.json",
+        "normalize_answers": True, "case_sensitive": False, "remove_punctuation": True
+    }
+    
+    return config
 
 
 class AnswerComparator:
