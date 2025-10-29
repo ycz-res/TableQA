@@ -354,7 +354,23 @@ class PlanAgent:
 
 {strategy_prompt}
 
-请根据上述规则拆分这个问题，输出JSON格式的拆分结果：
+请根据上述规则拆分这个问题，严格按照以下格式输出JSON结果（不要添加任何其他文字）：
+
+```json
+{{
+  "strategy": "策略名称",
+  "subtasks": [
+    {{
+      "id": "task_1",
+      "description": "任务描述",
+      "task_type": "任务类型",
+      "dependencies": [],
+      "expected_output": "期望输出",
+      "reasoning_steps": ["步骤1", "步骤2"]
+    }}
+  ]
+}}
+```
 """
         
         # 4. 调用模型进行拆分
@@ -372,12 +388,39 @@ class PlanAgent:
             response = self.tokenizer.decode(outputs[0], skip_special_tokens=True)
             
             # 5. 解析JSON响应
+            # 尝试多种方式解析JSON
+            json_result = None
+            
+            # 方法1: 直接查找JSON块
             json_match = re.search(r'\{.*\}', response, re.DOTALL)
             if json_match:
-                result = json.loads(json_match.group())
-                return result
+                try:
+                    json_result = json.loads(json_match.group())
+                except json.JSONDecodeError:
+                    pass
+            
+            # 方法2: 查找```json块
+            if not json_result:
+                json_block_match = re.search(r'```json\s*(\{.*?\})\s*```', response, re.DOTALL)
+                if json_block_match:
+                    try:
+                        json_result = json.loads(json_block_match.group(1))
+                    except json.JSONDecodeError:
+                        pass
+            
+            # 方法3: 查找```块
+            if not json_result:
+                block_match = re.search(r'```\s*(\{.*?\})\s*```', response, re.DOTALL)
+                if block_match:
+                    try:
+                        json_result = json.loads(block_match.group(1))
+                    except json.JSONDecodeError:
+                        pass
+            
+            if json_result:
+                return json_result
             else:
-                # 如果解析失败，返回默认拆分
+                print(f"JSON解析失败，响应内容: {response[:200]}...")
                 return self._get_default_split(question, strategy_name)
                 
         except Exception as e:
@@ -386,19 +429,118 @@ class PlanAgent:
     
     def _get_default_split(self, question: str, strategy: str) -> Dict[str, Any]:
         """获取默认拆分结果"""
-        return {
-            "strategy": strategy,
-            "subtasks": [
-                {
-                    "id": "task_1",
-                    "description": f"分析问题: {question}",
-                    "task_type": "independent",
-                    "dependencies": [],
-                    "expected_output": "分析结果",
-                    "reasoning_steps": ["理解问题", "分析需求", "返回结果"]
-                }
-            ]
-        }
+        
+        # 根据策略类型生成更合理的默认拆分
+        if strategy == "aggregation":
+            return {
+                "strategy": "aggregation",
+                "subtasks": [
+                    {
+                        "id": "task_1",
+                        "description": f"提取相关数据列",
+                        "task_type": "independent",
+                        "dependencies": [],
+                        "expected_output": "数据列",
+                        "reasoning_steps": ["分析问题", "识别相关列", "提取数据"]
+                    },
+                    {
+                        "id": "task_2",
+                        "description": f"执行聚合计算",
+                        "task_type": "aggregate",
+                        "dependencies": ["task_1"],
+                        "expected_output": "聚合结果",
+                        "reasoning_steps": ["接收数据", "执行计算", "返回结果"]
+                    }
+                ]
+            }
+        elif strategy == "comparison":
+            return {
+                "strategy": "comparison",
+                "subtasks": [
+                    {
+                        "id": "task_1",
+                        "description": f"提取第一个实体的数据",
+                        "task_type": "independent",
+                        "dependencies": [],
+                        "expected_output": "第一个实体的值",
+                        "reasoning_steps": ["识别实体1", "提取数据", "返回结果"]
+                    },
+                    {
+                        "id": "task_2",
+                        "description": f"提取第二个实体的数据",
+                        "task_type": "independent",
+                        "dependencies": [],
+                        "expected_output": "第二个实体的值",
+                        "reasoning_steps": ["识别实体2", "提取数据", "返回结果"]
+                    },
+                    {
+                        "id": "task_3",
+                        "description": f"比较两个实体的值",
+                        "task_type": "compare",
+                        "dependencies": ["task_1", "task_2"],
+                        "expected_output": "比较结果",
+                        "reasoning_steps": ["接收两个值", "执行比较", "返回结果"]
+                    }
+                ]
+            }
+        elif strategy == "sequential":
+            return {
+                "strategy": "sequential",
+                "subtasks": [
+                    {
+                        "id": "task_1",
+                        "description": f"提取时间序列数据",
+                        "task_type": "independent",
+                        "dependencies": [],
+                        "expected_output": "时间序列数据",
+                        "reasoning_steps": ["识别时间列", "提取数据", "排序"]
+                    },
+                    {
+                        "id": "task_2",
+                        "description": f"分析趋势变化",
+                        "task_type": "sequential",
+                        "dependencies": ["task_1"],
+                        "expected_output": "趋势分析",
+                        "reasoning_steps": ["接收数据", "分析趋势", "返回结果"]
+                    }
+                ]
+            }
+        elif strategy == "bridge":
+            return {
+                "strategy": "bridge",
+                "subtasks": [
+                    {
+                        "id": "task_1",
+                        "description": f"应用过滤条件",
+                        "task_type": "independent",
+                        "dependencies": [],
+                        "expected_output": "过滤后的数据",
+                        "reasoning_steps": ["识别条件", "应用过滤", "返回结果"]
+                    },
+                    {
+                        "id": "task_2",
+                        "description": f"对过滤结果进行计算",
+                        "task_type": "bridge",
+                        "dependencies": ["task_1"],
+                        "expected_output": "计算结果",
+                        "reasoning_steps": ["接收过滤数据", "执行计算", "返回结果"]
+                    }
+                ]
+            }
+        else:  # independent
+            return {
+                "strategy": "independent",
+                "subtasks": [
+                    {
+                        "id": "task_1",
+                        "description": f"提取所有相关数据",
+                        "task_type": "independent",
+                        "dependencies": [],
+                        "expected_output": "数据列表",
+                        "reasoning_steps": ["分析需求", "提取数据", "返回结果"]
+                    }
+                ]
+            }
     
     def validate_independence(self, subtasks: List[Dict]) -> Tuple[bool, List[str]]:
         """验证子任务独立性"""
@@ -705,6 +847,21 @@ class TableQAPipeline:
                 final_answer = response.split("<|im_start|>assistant")[-1].strip()
             else:
                 final_answer = response[len(input_text):].strip()
+            
+            # 确保输出格式正确 - 如果没有<answer>标签，添加它们
+            if not final_answer.startswith('<answer>'):
+                # 提取实际答案内容（去掉可能的解释文本）
+                import re
+                # 尝试提取数字、百分比等答案
+                numbers = re.findall(r'\d+\.?\d*%?', final_answer)
+                if numbers:
+                    # 如果有数字，使用最后一个数字作为答案
+                    answer_content = numbers[-1]
+                else:
+                    # 否则使用整个回答
+                    answer_content = final_answer.strip()
+                
+                final_answer = f"<answer>\n{answer_content}\n</answer>"
             
             print(f"✅ 生成答案: {final_answer[:100]}...")
             

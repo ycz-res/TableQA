@@ -353,8 +353,8 @@ class GPROTrainer:
         self.comparator = AnswerComparator()
         self.optimizer = torch.optim.AdamW(
             model.parameters(),
-            lr=config.get("gpro", {}).get("learning_rate", 1e-5),
-            weight_decay=config.get("gpro", {}).get("weight_decay", 0.01)
+            lr=float(config.get("gpro", {}).get("learning_rate", 1e-5)),
+            weight_decay=float(config.get("gpro", {}).get("weight_decay", 0.01))
         )
     
     def generate_response(self, question: str, table_data: Dict) -> str:
@@ -594,10 +594,10 @@ def train_sft_cold_start(train_data: List[Dict], eval_data: List[Dict], config: 
     train_dataset = TableQADataset(train_data, tokenizer, config.get("model", {}).get("max_length", 1024))
     eval_dataset = TableQADataset(eval_data, tokenizer, config.get("model", {}).get("max_length", 1024))
     
-    # SFT训练参数 - 只训练一个epoch
+    # SFT训练参数
     training_args = TrainingArguments(
         output_dir=config.get("training", {}).get("output_dir", "./models/finetuned"),
-        num_train_epochs=1,  # 只训练一个epoch
+        num_train_epochs=config.get("training", {}).get("epochs", 3),  # 使用配置的epoch数
         per_device_train_batch_size=config.get("training", {}).get("batch_size", 2),
         per_device_eval_batch_size=2,
         warmup_steps=10,
@@ -610,7 +610,7 @@ def train_sft_cold_start(train_data: List[Dict], eval_data: List[Dict], config: 
         metric_for_best_model="eval_loss",
         greater_is_better=False,
         report_to="none",
-        learning_rate=config.get("training", {}).get("learning_rate", 2e-5),
+        learning_rate=float(config.get("training", {}).get("learning_rate", 2e-5)),
         weight_decay=0.01,
         gradient_accumulation_steps=2,
     )
@@ -643,9 +643,14 @@ def train_gpro(model, tokenizer, train_data: List[Dict], eval_data: List[Dict], 
     # 创建GPRO训练器
     gpro_trainer = GPROTrainer(model, tokenizer, config)
     
-    # 创建数据加载器
+    # 创建数据加载器 - 使用自定义collate函数
     batch_size = config.get("gpro", {}).get("batch_size", 4)
-    train_loader = DataLoader(train_data, batch_size=batch_size, shuffle=True)
+    
+    def collate_fn(batch):
+        """自定义collate函数处理不同大小的数据"""
+        return batch
+    
+    train_loader = DataLoader(train_data, batch_size=batch_size, shuffle=True, collate_fn=collate_fn)
     
     # GPRO训练参数
     num_epochs = config.get("gpro", {}).get("epochs", 3)

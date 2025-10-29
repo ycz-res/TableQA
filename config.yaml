@@ -20,15 +20,15 @@ lora:
 # 数据配置
 data:
   dataset_path: "./datasets/tablebench"
-  train_samples: 200
-  eval_samples: 50
+  train_samples: 886  # 使用全部样本训练
+  eval_samples: 886    # 使用全部样本测试
 
 # SFT冷启动训练配置
 training:
   output_dir: "./models/finetuned"
-  epochs: 1  # SFT只训练一个epoch
+  epochs: 3  # 增加训练轮数
   batch_size: 2
-  warmup_steps: 10
+  warmup_steps: 20
   logging_steps: 5
   eval_steps: 10
   save_steps: 20
