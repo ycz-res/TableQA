@@ -3,7 +3,7 @@
 Evaluation script for TableQA
 """
 from utils import load_config, AnswerComparator
-from models.utils import load_model_and_tokenizer
+from models.loader import load_both_agents
 from pipeline import TableQAPipeline
 from mcp.tools import MCPToolManager
 from dataset import TableBenchLoader
@@ -21,9 +21,11 @@ def main():
     print(f"\nModel: {config['model']}")
     print(f"Dataset: {config['dataset']}")
     
-    # Load model
-    print("\nLoading model...")
-    model, tokenizer = load_model_and_tokenizer(config, use_lora=True)
+    # Load both agents
+    print("\nLoading agents...")
+    agents = load_both_agents(config, use_plan_lora=True)
+    # Use Plan Agent for pipeline (it handles both planning and reasoning)
+    model, tokenizer = agents['plan']
     
     # Create pipeline
     mcp_manager = MCPToolManager()

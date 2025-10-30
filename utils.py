@@ -4,14 +4,15 @@
 
 import json
 import yaml
-from typing import Dict, List, Any
-from pipeline import TableQAPipeline
-from mcp_tools import MCPToolManager
-from modelscope import AutoModelForCausalLM, AutoTokenizer
+from typing import Dict, List, Any, TYPE_CHECKING
+from transformers import AutoModelForCausalLM, AutoTokenizer
 import torch
 from collections import Counter
 import time
 import re
+
+if TYPE_CHECKING:
+    from pipeline import TableQAPipeline
 
 
 def load_config(config_path: str = "config.yaml") -> Dict[str, Any]:
@@ -188,7 +189,7 @@ def evaluate_predictions(predictions: List[str], references: List[str]) -> Dict[
     return comparator.calculate_accuracy(predictions, references)
 
 
-def evaluate_pipeline(pipeline: TableQAPipeline, test_data: List[Dict]) -> Dict[str, Any]:
+def evaluate_pipeline(pipeline: "TableQAPipeline", test_data: List[Dict]) -> Dict[str, Any]:
     """评估pipeline性能"""
     results = {
         "total_samples": len(test_data),

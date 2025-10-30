@@ -6,7 +6,7 @@ import json
 import argparse
 from pathlib import Path
 from utils import load_config
-from models.utils import load_model_and_tokenizer
+from models.loader import load_both_agents
 from pipeline import TableQAPipeline
 from mcp.tools import MCPToolManager
 
@@ -56,10 +56,12 @@ def main():
     
     args = parser.parse_args()
     
-    # Load config and model
-    print("Loading model...")
+    # Load config and agents
+    print("Loading agents...")
     config = load_config()
-    model, tokenizer = load_model_and_tokenizer(config, use_lora=True)
+    agents = load_both_agents(config, use_plan_lora=True)
+    # Use Plan Agent for pipeline
+    model, tokenizer = agents['plan']
     
     # Create pipeline
     mcp_manager = MCPToolManager()
