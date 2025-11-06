@@ -1,0 +1,8 @@
+# OTT-QA Dataset Requirements
+
+# YAML配置文件支持
+PyYAML>=5.4.1
+
+# PyTorch (可选，用于Dataset接口)
+# torch>=1.8.0
+

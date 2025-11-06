@@ -1,0 +1,6 @@
+dataset:
+  OTTQA:
+    data_file: "data/OTTQA/linked.json"
+    table_dir: "data/OTTQA/tables"
+    passage_dir: "data/OTTQA/passages"
+    reference_file: "data/OTTQA/reference.json"

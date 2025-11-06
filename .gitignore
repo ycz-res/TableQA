@@ -1,0 +1,34 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+.venv
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Data files - 忽略所有数据文件
+data/
+
+# Other directory - 忽略整个 other 目录
+other/
+
+# Logs
+*.log
+
+# Temporary files
+*.tmp
+*.bak
