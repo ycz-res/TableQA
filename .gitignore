@@ -26,6 +26,9 @@ data/
 # Other directory - 忽略整个 other 目录
 other/
 
+# Temporary scripts
+*.sh
+
 # Logs
 *.log
 
